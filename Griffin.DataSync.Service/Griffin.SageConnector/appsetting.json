@@ -1,0 +1,7 @@
+{
+"ConnectionStrings": {
+  "Sage1": "Provider=MSDASQL;Password=RPA4AAG;Persist Security Info=True;User ID=griffin;Extended Properties=\"DSN=SOTAMAS90; UID=griffin; PWD=RPA4AAG; Directory=\\\\md-sage\\Sage\\Sage 100 Advanced\\MAS90; Prefix=\\\\md-sage\\Sage\\Sage 100 Advanced\\MAS90\\SY\\, \\\\md-sage\\Sage\\Sage 100 Advanced\\MAS90\\==\\; ViewDLL=\\\\md-sage\\Sage\\Sage 100 Advanced\\MAS90\\HOME; Company=AAG; LogFile=\\PVXODBC.LOG; RemotePVKIOHost=MD-SAGE; RemotePVKIOPort=20222; CacheSize=4; DirtyReads=1; BurstMode=1; StripTrailingSpaces=1; SERVER=NotTheServer\"",
+   "Sage": "DSN=***;UID=****;PWD=****;",
+  "Reporting": ""
+}
+}

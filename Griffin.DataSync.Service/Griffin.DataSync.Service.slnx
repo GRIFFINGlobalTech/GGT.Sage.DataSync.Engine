@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Griffin.DataSync.Service/Griffin.DataSync.Service.csproj" />
+  <Project Path="Griffin.SageConnector4.8/Griffin.SageConnector4.8.csproj" Id="29c7a710-c76c-4f24-90dd-4142b11b1b44" />
+</Solution>
