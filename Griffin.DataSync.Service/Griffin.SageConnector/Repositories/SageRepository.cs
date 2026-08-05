@@ -197,6 +197,29 @@ while (await reader.ReadAsync())
 
     return result;
 }
+public async Task<DataTable> GetMBBinLocationAsync()
+{
+    const string sql = @"
+        SELECT *
+        FROM MB_BinLocation";
+
+    await using var connection =
+        await _factory.CreateAsync();
+
+    using var command =
+        new OdbcCommand(sql, connection);
+
+    command.CommandTimeout = 0;
+
+    using var reader =
+        await command.ExecuteReaderAsync();
+
+    var table = new DataTable();
+
+    table.Load(reader);
+
+    return table;
+}
 public async Task<DataTable> GetCIItemAsync()
 {
     const string sql = @"

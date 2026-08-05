@@ -50,6 +50,24 @@ try
 
             break;
         }
+        case "mb_binlocation":
+{
+    DataTable table =
+        await repository.GetMBBinLocationAsync();
+
+    var rows = table.Rows.Cast<DataRow>()
+        .Select(r => table.Columns.Cast<DataColumn>()
+            .ToDictionary(
+                c => c.ColumnName,
+                c => r[c] == DBNull.Value
+                        ? null
+                        : r[c]));
+
+    Console.WriteLine(
+        JsonSerializer.Serialize(rows));
+
+    break;
+}
 
         default:
             throw new Exception($"Unknown command '{command}'.");
