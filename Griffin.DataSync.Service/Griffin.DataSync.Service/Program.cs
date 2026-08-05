@@ -38,6 +38,9 @@ namespace Griffin.DataSync.Service
             builder.Services.AddSingleton<ISqlRepo, SqlRepo>();
             builder.Services.AddSingleton<ISyncEngine, SyncEngine>();
             builder.Services.AddSingleton<RetryService>();
+            builder.Services.AddSingleton<ISyncJob, MBBinLocationSyncJob>();
+            builder.Services.AddSingleton<SyncScheduler>();
+
 
             builder.Services.AddHostedService<Worker>();
             

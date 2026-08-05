@@ -1,36 +1,39 @@
-using Griffin.DataSync.Service.Configuration;
-using Griffin.DataSync.Service.Interfaces;
-using Microsoft.Extensions.Options;
+using Griffin.DataSync.Service.Services;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Griffin.DataSync.Service
+public class Worker : BackgroundService
 {
-    public class Worker : BackgroundService
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<Worker> _logger;
+
+    public Worker(
+        IServiceScopeFactory scopeFactory,
+        ILogger<Worker> logger)
     {
-        private readonly ILogger<Worker> _logger;
-        private readonly ISyncEngine _syncEngine;
-        private readonly SyncOptions _syncOptions;
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+    }
 
-        public Worker(ILogger<Worker> logger, ISyncEngine syncEngine, IOptions<SyncOptions> options)
+    protected override async Task ExecuteAsync(
+        CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
         {
-            _logger = logger;
-            _syncEngine = syncEngine;
-            _syncOptions = options.Value;
-        }
+            using var scope =
+                _scopeFactory.CreateScope();
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
-        {
-            while (!stoppingToken.IsCancellationRequested)
-            {
-                if (_logger.IsEnabled(LogLevel.Information))
-                {
-                    _logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-                }
-                await _syncEngine.RunAsync(stoppingToken);
+            var scheduler =
+                scope.ServiceProvider
+                     .GetRequiredService<SyncScheduler>();
 
-                await Task.Delay(
-                    TimeSpan.FromSeconds(_syncOptions.IntervalSeconds),
-                    stoppingToken);
-            }
+            await scheduler.RunAsync(stoppingToken);
+
+            _logger.LogInformation(
+                "Waiting 5 minutes...");
+
+            await Task.Delay(
+                TimeSpan.FromMinutes(5),
+                stoppingToken);
         }
     }
 }
