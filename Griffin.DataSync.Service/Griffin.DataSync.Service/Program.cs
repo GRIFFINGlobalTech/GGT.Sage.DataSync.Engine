@@ -19,7 +19,9 @@ namespace Griffin.DataSync.Service
            // builder.Services.AddWindowsService();
 
             builder.Services.Configure<SyncOptions>(
-                builder.Configuration.GetSection("Sync"));
+            builder.Configuration.GetSection("Sync"));
+            builder.Services.Configure<JobScheduleOptions>(
+            builder.Configuration);
 
             Log.Logger = new LoggerConfiguration()
                 .WriteTo.Console()

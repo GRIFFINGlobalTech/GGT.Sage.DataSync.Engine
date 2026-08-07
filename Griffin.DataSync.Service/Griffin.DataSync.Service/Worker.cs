@@ -1,5 +1,6 @@
 using Griffin.DataSync.Service.Services;
-using Microsoft.Extensions.DependencyInjection;
+
+namespace Griffin.DataSync.Service;
 
 public class Worker : BackgroundService
 {
@@ -17,23 +18,33 @@ public class Worker : BackgroundService
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
+        _logger.LogInformation("Worker started.");
+
         while (!stoppingToken.IsCancellationRequested)
         {
-            using var scope =
-                _scopeFactory.CreateScope();
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
 
-            var scheduler =
-                scope.ServiceProvider
-                     .GetRequiredService<SyncScheduler>();
+                var scheduler = scope.ServiceProvider
+                    .GetRequiredService<SyncScheduler>();
 
-            await scheduler.RunAsync(stoppingToken);
+                await scheduler.RunAsync(stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Unexpected error while running scheduler.");
+            }
 
-            _logger.LogInformation(
-                "Waiting 5 minutes...");
-
+            // Wake up every 30 seconds.
+            // SyncEngine decides which jobs should run.
             await Task.Delay(
-                TimeSpan.FromMinutes(5),
+                TimeSpan.FromSeconds(30),
                 stoppingToken);
         }
+
+        _logger.LogInformation("Worker stopped.");
     }
 }

@@ -3,22 +3,21 @@ using Griffin.DataSync.Service.Models;
 using Griffin.DataSync.Service.Repositories;
 using Griffin.DataSync.Service.Services;
 
-namespace Griffin.DataSync.Service.Jobs;
-
 public class TableSyncJob : ISyncJob
 {
     private readonly TableSyncDefinition _definition;
-
     private readonly SageConnectorRunner _connector;
-
-    private readonly SqlRepo _sqlRepo;
-
+    private readonly ISqlRepo _sqlRepo;
     private readonly ILogger<TableSyncJob> _logger;
+
+    public string JobName => _definition.Name;
+    public TimeSpan Interval => _definition.Interval;
+
 
     public TableSyncJob(
         TableSyncDefinition definition,
         SageConnectorRunner connector,
-        SqlRepo sqlRepo,
+        ISqlRepo sqlRepo,
         ILogger<TableSyncJob> logger)
     {
         _definition = definition;
@@ -29,9 +28,7 @@ public class TableSyncJob : ISyncJob
 
     public async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
-            "Starting {Job}",
-            _definition.Name);
+        _logger.LogInformation("Starting {Job}", JobName);
 
         var table =
             await _connector.ExecuteDataTableAsync(
@@ -50,8 +47,6 @@ public class TableSyncJob : ISyncJob
             _definition.MergeProcedure,
             cancellationToken);
 
-        _logger.LogInformation(
-            "{Job} completed.",
-            _definition.Name);
+        _logger.LogInformation("{Job} completed.", JobName);
     }
 }

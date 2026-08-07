@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿namespace Griffin.DataSync.Service.Configuration;
 
-namespace Griffin.DataSync.Service.Configuration
+public class JobScheduleOptions
 {
-    internal class JobScheduleOptions
-    {
-    }
+    public Dictionary<string, int> JobSchedules { get; set; } = new();
 }

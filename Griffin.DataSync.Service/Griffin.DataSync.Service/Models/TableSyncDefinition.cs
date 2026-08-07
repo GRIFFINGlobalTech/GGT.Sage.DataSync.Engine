@@ -9,4 +9,6 @@ public class TableSyncDefinition
     public string StageTable { get; set; } = "";
 
     public string MergeProcedure { get; set; } = "";
+    public TimeSpan Interval { get; set; }
+
 }

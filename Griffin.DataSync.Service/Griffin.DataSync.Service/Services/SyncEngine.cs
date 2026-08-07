@@ -1,5 +1,6 @@
 ﻿using Griffin.DataSync.Service.Configuration;
 using Griffin.DataSync.Service.Interfaces;
+using Microsoft.Extensions.Options;
 
 namespace Griffin.DataSync.Service.Services;
 
@@ -7,63 +8,46 @@ public class SyncEngine : ISyncEngine
 {
     private readonly IEnumerable<ISyncJob> _jobs;
     private readonly ILogger<SyncEngine> _logger;
+    private readonly JobScheduleOptions _options;
 
-    private readonly List<JobSchedule> _schedules =
-    [
-        new()
-        {
-            JobName = "Inventory Replenishment",
-            Interval = TimeSpan.FromMinutes(5)
-        },
-
-        new()
-        {
-            JobName = "CI Item",
-            Interval = TimeSpan.FromHours(12)
-        },
-
-        new()
-        {
-            JobName = "MB Bin Location",
-            Interval = TimeSpan.FromHours(12)
-        },
-
-        new()
-        {
-            JobName = "MB Bin Item",
-            Interval = TimeSpan.FromMinutes(10)
-        },
-
-        new()
-        {
-            JobName = "SO Sales Order Header",
-            Interval = TimeSpan.FromMinutes(2)
-        },
-
-        new()
-        {
-            JobName = "SO Sales Order Detail",
-            Interval = TimeSpan.FromMinutes(2)
-        }
-    ];
+    // Stores the last execution time of every job
+    private readonly Dictionary<string, DateTime> _lastRun = new();
 
     public SyncEngine(
         IEnumerable<ISyncJob> jobs,
-        ILogger<SyncEngine> logger)
+        ILogger<SyncEngine> logger,
+        IOptions<JobScheduleOptions> options)
     {
         _jobs = jobs;
         _logger = logger;
+        _options = options.Value;
     }
 
     public async Task RunAsync(CancellationToken cancellationToken)
     {
         foreach (var job in _jobs)
         {
-            var schedule =
-                _schedules.First(x => x.JobName == job.JobName);
+            cancellationToken.ThrowIfCancellationRequested();
 
-            if (DateTime.Now - schedule.LastRun < schedule.Interval)
+            if (!_lastRun.ContainsKey(job.JobName))
+            {
+                _lastRun[job.JobName] = DateTime.MinValue;
+            }
+
+            // Read interval from appsettings.json
+            if (!_options.JobSchedules.TryGetValue(
+                    job.JobName,
+                    out var intervalMinutes))
+            {
+                intervalMinutes = 5; // Default if not configured
+            }
+
+            // Skip if it's not time yet
+            if (DateTime.Now - _lastRun[job.JobName]
+                < TimeSpan.FromMinutes(intervalMinutes))
+            {
                 continue;
+            }
 
             _logger.LogInformation(
                 "Starting {Job}",
@@ -73,10 +57,10 @@ public class SyncEngine : ISyncEngine
             {
                 await job.ExecuteAsync(cancellationToken);
 
-                schedule.LastRun = DateTime.Now;
+                _lastRun[job.JobName] = DateTime.Now;
 
                 _logger.LogInformation(
-                    "{Job} completed.",
+                    "{Job} completed successfully.",
                     job.JobName);
             }
             catch (Exception ex)
