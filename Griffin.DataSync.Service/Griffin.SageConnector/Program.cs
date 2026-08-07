@@ -7,10 +7,7 @@ using Griffin.SageConnector.Services;
 try
 {
     if (args.Length == 0)
-    {
-        Console.Error.WriteLine("Command is required.");
-        Environment.Exit(1);
-    }
+        throw new Exception("Command required.");
 
     var command = args[0].ToLower();
 
@@ -23,7 +20,7 @@ try
     switch (command)
     {
         case "inventory":
-        {
+
             var inventory =
                 await new InventoryReplenishmentService(repository)
                     .ExecuteAsync();
@@ -32,45 +29,41 @@ try
                 JsonSerializer.Serialize(inventory));
 
             break;
-        }
 
-        case "ci_item":
-        {
+        default:
+
+            string tableName = command switch
+            {
+                "ci_item" => "CI_ITEM",
+
+                "mb_binitem" => "MB_BinItem",
+
+                "mb_binlocation" => "MB_BinLocation",
+
+                "so_salesorderheader" => "SO_SalesOrderHeader",
+
+                "so_salesorderdetail" => "SO_SalesOrderDetail",
+
+                _ => throw new Exception($"Unknown command {command}")
+            };
+
             DataTable table =
-                await repository.GetCIItemAsync();
+                await repository.GetTableAsync(tableName);
 
-            var rows = table.Rows.Cast<DataRow>()
-                .Select(r => table.Columns.Cast<DataColumn>()
+            var rows =
+                table.Rows.Cast<DataRow>()
+                .Select(r =>
+                    table.Columns.Cast<DataColumn>()
                     .ToDictionary(
                         c => c.ColumnName,
-                        c => r[c] == DBNull.Value ? null : r[c]));
+                        c => r[c] == DBNull.Value
+                            ? null
+                            : r[c]));
 
             Console.WriteLine(
                 JsonSerializer.Serialize(rows));
 
             break;
-        }
-        case "mb_binlocation":
-{
-    DataTable table =
-        await repository.GetMBBinLocationAsync();
-
-    var rows = table.Rows.Cast<DataRow>()
-        .Select(r => table.Columns.Cast<DataColumn>()
-            .ToDictionary(
-                c => c.ColumnName,
-                c => r[c] == DBNull.Value
-                        ? null
-                        : r[c]));
-
-    Console.WriteLine(
-        JsonSerializer.Serialize(rows));
-
-    break;
-}
-
-        default:
-            throw new Exception($"Unknown command '{command}'.");
     }
 }
 catch (Exception ex)
