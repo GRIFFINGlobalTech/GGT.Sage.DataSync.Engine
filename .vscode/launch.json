@@ -1,0 +1,41 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        
+        
+        {
+            "name": "Launch Debug",
+            "type": "devtools",
+            "request": "launch",
+                        "preLaunchTask": "build",
+            "projectPath": "C:/Users/pnelson-griff/AAG.WORK/GGT.Sage.DataSync.Engine/Griffin.DataSync.Service/Griffin.DataSync.Service/Griffin.DataSync.Service.csproj",
+            "withDebug": true
+        },
+
+        {
+            // Use IntelliSense to find out which attributes exist for C# debugging
+            // Use hover for the description of the existing attributes
+            // For further information visit https://github.com/dotnet/vscode-csharp/blob/main/debugger-launchjson.md
+            "name": ".NET Core Launch (console)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            // If you have changed target frameworks, make sure to update the program path.
+            "program": "${workspaceFolder}/Griffin.DataSync.Service/Griffin.SageConnector/bin/Debug/net8.0/Griffin.SageConnector.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/Griffin.DataSync.Service/Griffin.SageConnector",
+            // For more information about the 'console' field, see https://aka.ms/VSCode-CS-LaunchJson-Console
+            "console": "integratedTerminal",
+
+            "stopAtEntry": false
+        },
+        {
+            "name": ".NET Core Attach",
+            "type": "coreclr",
+            "request": "attach"
+        }
+    ]
+}
