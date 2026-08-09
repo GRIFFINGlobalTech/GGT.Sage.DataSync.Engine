@@ -1,131 +1,262 @@
-﻿using Griffin.DataSync.Service.Interfaces;
-using Microsoft.AspNetCore.Connections;
-using Microsoft.Data.SqlClient;
-using System;
-using System.Collections.Generic;
-using System.Data;
+﻿using System.Data;
 using System.Data.Common;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Data.SqlClient;
+using Griffin.DataSync.Service.Interfaces;
+using Griffin.DataSync.Service.Infrastructure.ConnectionFactories;
 
-namespace Griffin.DataSync.Service.Repositories
+namespace Griffin.DataSync.Service.Repositories;
+
+public class SqlRepo : ISqlRepo
 {
-    public class SqlRepo: ISqlRepo
+    private readonly ISqlConnectionFactory _connectionFactory;
+
+    public SqlRepo(
+        ISqlConnectionFactory connectionFactory)
     {
-        private readonly ISqlConnectionFactory _connectionFactory;
-
-        public SqlRepo(ISqlConnectionFactory factory)
-        {
-            _connectionFactory = factory;
-        }
-public async Task BulkInsertAsync<T>(
-    IEnumerable<T> data,
-    string tableName,
-    CancellationToken cancellationToken)
-{
-    var table = ToDataTable(data);
-
-    await using var connection =  await _connectionFactory.CreateConnectionAsync();
-
-    using var bulk =
-        new SqlBulkCopy(connection);
-
-    bulk.DestinationTableName = tableName;
-
-    foreach (DataColumn column in table.Columns)
-    {
-        bulk.ColumnMappings.Add(
-            column.ColumnName,
-            column.ColumnName);
+        _connectionFactory = connectionFactory;
     }
 
-    await bulk.WriteToServerAsync(
-        table,
-        cancellationToken);
-}
-        public async Task BulkInsertAsync(DbDataReader reader,string destinationTable, CancellationToken cancellationToken)
+    // ============================================================
+    // BULK INSERT DATATABLE
+    // ============================================================
+
+    public async Task BulkInsertAsync(
+        DataTable table,
+        string destinationTable,
+        CancellationToken cancellationToken)
+    {
+        if (table == null)
+            throw new ArgumentNullException(nameof(table));
+
+        if (table.Rows.Count == 0)
         {
-            await using var connection = await _connectionFactory.CreateConnectionAsync();
+            return;
+        }
 
-            using var bulkCopy =  new SqlBulkCopy(connection);
+        await using var connection =
+            await _connectionFactory.CreateConnectionAsync();
 
-            bulkCopy.DestinationTableName = destinationTable;
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
 
-            bulkCopy.BatchSize = 5000;
+        // --------------------------------------------------------
+        // Get actual SQL destination columns
+        // --------------------------------------------------------
 
-            bulkCopy.BulkCopyTimeout = 0;
-
-            await bulkCopy.WriteToServerAsync(
-                reader,
+        var targetColumns =
+            await GetDestinationColumnsAsync(
+                connection,
+                destinationTable,
                 cancellationToken);
-        }
-public async Task BulkInsertAsync(
-    DataTable table,
-    string tableName,
-    CancellationToken cancellationToken)
-{
-    await using var connection =
-        await _connectionFactory.CreateConnectionAsync();
 
-    using var bulk = new SqlBulkCopy(connection)
-    {
-        DestinationTableName = tableName,
-        BulkCopyTimeout = 0
-    };
-
-    foreach (DataColumn column in table.Columns)
-    {
-        bulk.ColumnMappings.Add(
-            column.ColumnName,
-            column.ColumnName);
-    }
-
-    await bulk.WriteToServerAsync(
-        table,
-        cancellationToken);
-}
-        public async Task ExecuteProcedureAsync( string procedure,  CancellationToken cancellationToken)
+        if (targetColumns.Count == 0)
         {
-            await using var connection = await _connectionFactory.CreateConnectionAsync();
-
-            await using var command =  new SqlCommand(procedure, connection);
-
-            command.CommandType =  CommandType.StoredProcedure;
-
-            await command.ExecuteNonQueryAsync(cancellationToken);
+            throw new InvalidOperationException(
+                $"No columns found for destination table '{destinationTable}'.");
         }
-        private static DataTable ToDataTable<T>(
-    IEnumerable<T> data)
-{
-    var table = new DataTable();
 
-    var properties =
-        typeof(T).GetProperties();
+        // --------------------------------------------------------
+        // Create SqlBulkCopy
+        // --------------------------------------------------------
 
-    foreach (var property in properties)
-    {
-        table.Columns.Add(
-            property.Name,
-            Nullable.GetUnderlyingType(property.PropertyType)
-            ?? property.PropertyType);
-    }
+        using var bulkCopy =
+            new SqlBulkCopy(connection)
+            {
+                DestinationTableName = destinationTable,
+                BulkCopyTimeout = 0,
+                BatchSize = 5000,
+                EnableStreaming = true
+            };
 
-    foreach (var item in data)
-    {
-        var row = table.NewRow();
+        // VERY IMPORTANT
+        //
+        // Make sure there are absolutely no existing mappings.
+        //
+        bulkCopy.ColumnMappings.Clear();
 
-        foreach (var property in properties)
+        var mappedCount = 0;
+
+        // --------------------------------------------------------
+        // Map DataTable columns to SQL columns
+        // --------------------------------------------------------
+
+        foreach (DataColumn sourceColumn in table.Columns)
         {
-            row[property.Name] =
-                property.GetValue(item)
-                ?? DBNull.Value;
+            var sourceName =
+                sourceColumn.ColumnName.Trim();
+
+            if (string.IsNullOrWhiteSpace(sourceName))
+                continue;
+
+            // Only map columns that actually exist in SQL.
+            var targetColumn =
+                targetColumns.FirstOrDefault(
+                    x => x.Equals(
+                        sourceName,
+                        StringComparison.OrdinalIgnoreCase));
+
+            if (targetColumn == null)
+            {
+                // This is useful for debugging.
+                // Sage may contain columns that your SQL table
+                // does not contain.
+                Console.WriteLine(
+                    $"Skipping source column '{sourceName}' " +
+                    $"because it does not exist in '{destinationTable}'.");
+
+                continue;
+            }
+
+            bulkCopy.ColumnMappings.Add(
+                sourceName,
+                targetColumn);
+
+            mappedCount++;
         }
 
-        table.Rows.Add(row);
+        if (mappedCount == 0)
+        {
+            throw new InvalidOperationException(
+                $"No matching columns found between Sage data " +
+                $"and destination table '{destinationTable}'.");
+        }
+
+        // --------------------------------------------------------
+        // Diagnostic logging
+        // --------------------------------------------------------
+
+        Console.WriteLine(
+            $"Bulk inserting {table.Rows.Count} rows into {destinationTable}.");
+
+        Console.WriteLine(
+            $"Source columns: {table.Columns.Count}");
+
+        Console.WriteLine(
+            $"Target columns: {targetColumns.Count}");
+
+        Console.WriteLine(
+            $"Mapped columns: {mappedCount}");
+
+        // --------------------------------------------------------
+        // Write data
+        // --------------------------------------------------------
+
+        await bulkCopy.WriteToServerAsync(
+            table,
+            cancellationToken);
     }
 
-    return table;
-}
+    // ============================================================
+    // GET DESTINATION TABLE COLUMNS
+    // ============================================================
+
+    private static async Task<List<string>> GetDestinationColumnsAsync(
+        SqlConnection connection,
+        string destinationTable,
+        CancellationToken cancellationToken)
+    {
+        var result = new List<string>();
+
+        var sql = $"""
+            SELECT TOP (0) *
+            FROM {destinationTable};
+            """;
+
+        using var command =
+            new SqlCommand(
+                sql,
+                connection)
+            {
+                CommandTimeout = 0
+            };
+
+        using var reader =
+            await command.ExecuteReaderAsync(
+                cancellationToken);
+
+        for (int i = 0; i < reader.FieldCount; i++)
+        {
+            result.Add(
+                reader.GetName(i));
+        }
+
+        return result;
+    }
+
+    // ============================================================
+    // BULK INSERT DBDATAREADER
+    // ============================================================
+
+    public async Task BulkInsertAsync(
+        DbDataReader reader,
+        string destinationTable,
+        CancellationToken cancellationToken)
+    {
+        if (reader == null)
+            throw new ArgumentNullException(nameof(reader));
+
+        await using var connection =
+            await _connectionFactory.CreateConnectionAsync();
+
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        using var bulkCopy =
+            new SqlBulkCopy(connection)
+            {
+                DestinationTableName = destinationTable,
+                BulkCopyTimeout = 0,
+                BatchSize = 5000,
+                EnableStreaming = true
+            };
+
+        bulkCopy.ColumnMappings.Clear();
+
+        for (int i = 0; i < reader.FieldCount; i++)
+        {
+            var columnName =
+                reader.GetName(i);
+
+            bulkCopy.ColumnMappings.Add(
+                columnName,
+                columnName);
+        }
+
+        await bulkCopy.WriteToServerAsync(
+            reader,
+            cancellationToken);
+    }
+
+    // ============================================================
+    // EXECUTE STORED PROCEDURE
+    // ============================================================
+
+    public async Task ExecuteProcedureAsync(
+        string procedure,
+        CancellationToken cancellationToken)
+    {
+        await using var connection =
+            await _connectionFactory.CreateConnectionAsync();
+
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        using var command =
+            new SqlCommand(
+                procedure,
+                connection)
+            {
+                CommandType = CommandType.StoredProcedure,
+                CommandTimeout = 0
+            };
+
+        await command.ExecuteNonQueryAsync(
+            cancellationToken);
     }
 }

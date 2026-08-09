@@ -52,21 +52,21 @@ public class SageRepository
     // ============================================================
 
     public async Task<List<InventoryBin>> GetInventoryAsync()
-    {
-        const string sql = @"
+{
+    const string sql = @"
 SELECT
     MB.ItemCode,
     MB.QuantityOnHand,
     CI.ItemCodeDesc
-FROM MB_BinItem MB
-INNER JOIN MB_BinLocation BL
-    ON MB.BinLocation = BL.BinLocation
-INNER JOIN CI_Item CI
-    ON MB.ItemCode = CI.ItemCode
+FROM
+    MB_BinItem MB,
+    MB_BinLocation BL,
+    CI_Item CI
 WHERE
-    BL.Active = 'Y'
-    AND
-    (
+    MB.BinLocation = BL.BinLocation
+    AND MB.ItemCode = CI.ItemCode
+    AND BL.Active = 'Y'
+    AND (
         (
             MB.BinLocation LIKE '%A%'
             AND MB.WarehouseCode = '001'
@@ -78,39 +78,39 @@ WHERE
         )
     )";
 
-        var result = new List<InventoryBin>();
+    var result = new List<InventoryBin>();
 
-        await using var connection =
-            await _factory.CreateAsync();
+    await using var connection =
+        await _factory.CreateAsync();
 
-        using var command =
-            new OdbcCommand(sql, connection);
+    using var command =
+        new OdbcCommand(sql, connection);
 
-        command.CommandTimeout = 300;
+    command.CommandTimeout = 300;
 
-        using var reader =
-            await command.ExecuteReaderAsync();
+    using var reader =
+        await command.ExecuteReaderAsync();
 
-        while (await reader.ReadAsync())
+    while (await reader.ReadAsync())
+    {
+        result.Add(new InventoryBin
         {
-            result.Add(new InventoryBin
-            {
-                ItemCode =
-                    reader["ItemCode"]?.ToString() ?? "",
+            ItemCode =
+                reader["ItemCode"]?.ToString() ?? "",
 
-                QuantityOnHand =
-                    reader["QuantityOnHand"] == DBNull.Value
-                        ? 0
-                        : Convert.ToDecimal(
-                            reader["QuantityOnHand"]),
+            QuantityOnHand =
+                reader["QuantityOnHand"] == DBNull.Value
+                    ? 0
+                    : Convert.ToDecimal(
+                        reader["QuantityOnHand"]),
 
-                ItemDesc =
-                    reader["ItemCodeDesc"]?.ToString() ?? ""
-            });
-        }
-
-        return result;
+            ItemDesc =
+                reader["ItemCodeDesc"]?.ToString() ?? ""
+        });
     }
+
+    return result;
+}
 
 
     public async Task<List<SalesOrderLine>> GetSalesOrderLinesAsync()

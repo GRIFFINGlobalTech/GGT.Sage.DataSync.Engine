@@ -2,13 +2,13 @@
 
 public class TableSyncDefinition
 {
-    public string Name { get; set; } = "";
+    public string JobName { get; set; } = string.Empty;
 
-    public string ConnectorCommand { get; set; } = "";
+    public string Command { get; set; } = string.Empty;
 
-    public string StageTable { get; set; } = "";
+    public string StageTable { get; set; } = string.Empty;
 
-    public string MergeProcedure { get; set; } = "";
-    public TimeSpan Interval { get; set; }
+    public string MergeProcedure { get; set; } = string.Empty;
 
+    public int IntervalMinutes { get; set; }
 }

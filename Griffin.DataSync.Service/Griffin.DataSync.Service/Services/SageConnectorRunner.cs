@@ -17,32 +17,35 @@ public class SageConnectorRunner
         _logger = logger;
     }
 
-    // Existing method (leave it)
-    public async Task<List<T>> ExecuteAsync<T>(string command)
+    public async Task<List<T>> ExecuteAsync<T>(
+        string command)
     {
-        var json = await ExecuteConnectorAsync(command);
+        var json =
+            await ExecuteConnectorAsync(command);
 
         return JsonSerializer.Deserialize<List<T>>(json)
                ?? new List<T>();
     }
 
-    // New method
-    public async Task<DataTable> ExecuteDataTableAsync(string command)
+    public async Task<DataTable> ExecuteDataTableAsync(
+        string command)
     {
-        var json = await ExecuteConnectorAsync(command);
+        var json =
+            await ExecuteConnectorAsync(command);
 
         return JsonToDataTable(json);
     }
 
-    // Common connector execution
-    private async Task<string> ExecuteConnectorAsync(string command)
+    private async Task<string> ExecuteConnectorAsync(
+        string command)
     {
-        var process = new Process();
+        using var process = new Process();
 
         process.StartInfo.FileName =
             _configuration["SageConnector:Path"]!;
 
-        process.StartInfo.Arguments = command;
+        process.StartInfo.Arguments =
+            command;
 
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.RedirectStandardOutput = true;
@@ -59,51 +62,130 @@ public class SageConnectorRunner
 
         process.Start();
 
-        string json = await process.StandardOutput.ReadToEndAsync();
-        string error = await process.StandardError.ReadToEndAsync();
+        var jsonTask =
+            process.StandardOutput.ReadToEndAsync();
+
+        var errorTask =
+            process.StandardError.ReadToEndAsync();
+
+        await Task.WhenAll(
+            jsonTask,
+            errorTask);
 
         await process.WaitForExitAsync();
 
+        var json = await jsonTask;
+        var error = await errorTask;
+
         if (process.ExitCode != 0)
-            throw new Exception(error);
+        {
+            throw new Exception(
+                string.IsNullOrWhiteSpace(error)
+                    ? $"Connector exited with code {process.ExitCode}."
+                    : error);
+        }
 
         return json;
     }
 
-    private static DataTable JsonToDataTable(string json)
+    private DataTable JsonToDataTable(
+        string json)
     {
         var table = new DataTable();
 
-        using var document = JsonDocument.Parse(json);
+        using var document =
+            JsonDocument.Parse(json);
 
-        if (document.RootElement.ValueKind != JsonValueKind.Array)
-            return table;
-
-        var rows = document.RootElement;
-
-        if (rows.GetArrayLength() == 0)
-            return table;
-
-        // Create columns
-        foreach (var property in rows[0].EnumerateObject())
+        if (document.RootElement.ValueKind !=
+            JsonValueKind.Array)
         {
-            table.Columns.Add(property.Name);
+            throw new Exception(
+                "Connector response is not a JSON array.");
         }
 
-        // Add rows
+        var rows =
+            document.RootElement;
+
+        if (rows.GetArrayLength() == 0)
+        {
+            return table;
+        }
+
+        var firstRow =
+            rows[0];
+
+        if (firstRow.ValueKind !=
+            JsonValueKind.Object)
+        {
+            throw new Exception(
+                "Connector returned an invalid row format.");
+        }
+
+        // =========================================================
+        // CREATE COLUMNS
+        // =========================================================
+
+        foreach (var property in
+                 firstRow.EnumerateObject())
+        {
+            var columnName =
+                property.Name.Trim();
+
+            // This should NEVER happen with the correct
+            // connector JSON, but protects us from accidentally
+            // creating a column containing comma-separated names.
+            if (columnName.Contains(','))
+            {
+                throw new Exception(
+                    $"Invalid connector column name detected: '{columnName}'. " +
+                    "The connector is returning multiple column names as one property.");
+            }
+
+            if (!table.Columns.Contains(columnName))
+            {
+                table.Columns.Add(columnName);
+            }
+        }
+
+        _logger.LogInformation(
+            "Created DataTable with {ColumnCount} columns.",
+            table.Columns.Count);
+
+        _logger.LogInformation(
+            "First columns: {Columns}",
+            string.Join(
+                ", ",
+                table.Columns
+                    .Cast<DataColumn>()
+                    .Take(10)
+                    .Select(x => x.ColumnName)));
+
+        // =========================================================
+        // CREATE ROWS
+        // =========================================================
+
         foreach (var item in rows.EnumerateArray())
         {
-            var row = table.NewRow();
+            var dataRow =
+                table.NewRow();
 
-            foreach (var property in item.EnumerateObject())
+            foreach (var property in
+                     item.EnumerateObject())
             {
-                row[property.Name] =
-                    property.Value.ValueKind == JsonValueKind.Null
+                var columnName =
+                    property.Name.Trim();
+
+                if (!table.Columns.Contains(columnName))
+                    continue;
+
+                dataRow[columnName] =
+                    property.Value.ValueKind ==
+                    JsonValueKind.Null
                         ? DBNull.Value
                         : property.Value.ToString();
             }
 
-            table.Rows.Add(row);
+            table.Rows.Add(dataRow);
         }
 
         return table;
