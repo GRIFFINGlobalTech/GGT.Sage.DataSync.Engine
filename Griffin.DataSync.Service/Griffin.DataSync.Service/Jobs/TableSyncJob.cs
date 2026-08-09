@@ -57,21 +57,7 @@ public class TableSyncJob : ISyncJob
 
             return;
         }
-
-        _logger.LogInformation(
-            "Created DataTable with {ColumnCount} columns for {Job}.",
-            table.Columns.Count,
-            JobName);
-
-        _logger.LogInformation(
-            "First columns: {Columns}",
-            string.Join(
-                ", ",
-                table.Columns
-                    .Cast<DataColumn>()
-                    .Take(10)
-                    .Select(x => x.ColumnName)));
-
+       
         // ========================================================
         // BULK INSERT
         // ========================================================

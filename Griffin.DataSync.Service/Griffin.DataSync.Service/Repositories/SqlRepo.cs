@@ -129,15 +129,7 @@ public class SqlRepo : ISqlRepo
 
         Console.WriteLine(
             $"Bulk inserting {table.Rows.Count} rows into {destinationTable}.");
-
-        Console.WriteLine(
-            $"Source columns: {table.Columns.Count}");
-
-        Console.WriteLine(
-            $"Target columns: {targetColumns.Count}");
-
-        Console.WriteLine(
-            $"Mapped columns: {mappedCount}");
+  
 
         // --------------------------------------------------------
         // Write data

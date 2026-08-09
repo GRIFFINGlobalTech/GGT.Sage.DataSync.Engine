@@ -147,18 +147,6 @@ public class SageConnectorRunner
             }
         }
 
-        _logger.LogInformation(
-            "Created DataTable with {ColumnCount} columns.",
-            table.Columns.Count);
-
-        _logger.LogInformation(
-            "First columns: {Columns}",
-            string.Join(
-                ", ",
-                table.Columns
-                    .Cast<DataColumn>()
-                    .Take(10)
-                    .Select(x => x.ColumnName)));
 
         // =========================================================
         // CREATE ROWS
