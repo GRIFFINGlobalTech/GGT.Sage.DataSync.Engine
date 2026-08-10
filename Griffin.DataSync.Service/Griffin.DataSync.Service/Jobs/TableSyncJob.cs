@@ -32,10 +32,7 @@ public class TableSyncJob : ISyncJob
     public async Task ExecuteAsync(
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
-            "Starting {Job}",
-            JobName);
-
+ 
         // ========================================================
         // GET DATA FROM SAGE
         // ========================================================
@@ -79,8 +76,6 @@ public class TableSyncJob : ISyncJob
             _definition.MergeProcedure,
             cancellationToken);
 
-        _logger.LogInformation(
-            "{Job} completed successfully.",
-            JobName);
+    
     }
 }

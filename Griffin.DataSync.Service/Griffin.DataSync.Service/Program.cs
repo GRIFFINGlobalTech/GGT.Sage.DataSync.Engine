@@ -44,10 +44,10 @@ namespace Griffin.DataSync.Service
             sp,
             definition));
 }
-            builder.Services.AddScoped<ISyncJob, UpdateShipperBoardJob>();
+            builder.Services.AddSingleton<ISyncJob, UpdateShipperBoardJob>();
             builder.Services.AddSingleton<ISqlQueryProvider, SqlQueryProvider>();
             builder.Services.AddSingleton<IOdbcConnectionFactory,OdbcConnectionFactory>();
-            builder.Services.AddSingleton<ISyncJob,InventoryReplenishmentSyncJob>();
+            //builder.Services.AddSingleton<ISyncJob,InventoryReplenishmentSyncJob>();
             builder.Services.AddSingleton<ISqlConnectionFactory,SqlConnectionFactory>();
             builder.Services.AddSingleton<ISageRepository, SageRepository>();
             //builder.Services.AddSingleton<ISyncJob, CIItemSyncJob>();

@@ -7,7 +7,7 @@ public class UpdateShipperBoardJob : ISyncJob
     private readonly ISqlRepo _sqlRepo;
     private readonly ILogger<UpdateShipperBoardJob> _logger;
 
-    public string JobName => "Refresh Griffin Shippers Board";
+    public string JobName => "Refresh Shippers Board";
 
     public TimeSpan Interval => TimeSpan.FromMinutes(5);
 
@@ -23,11 +23,7 @@ public class UpdateShipperBoardJob : ISyncJob
         CancellationToken cancellationToken)
     {
         const string procedure =
-            "dbo.usp_RefreshGriffinShippersBoard";
-
-        _logger.LogInformation(
-            "Starting {Job}",
-            JobName);
+            "dbo.usp_RefreshGriffinShippersBoard";   
 
         try
         {
