@@ -17,7 +17,10 @@ namespace Griffin.DataSync.Service
             var s = @"Provider=MSDASQL;Password=RPA4AAG;Persist Security Info=True;User ID=griffin;Extended Properties=""DSN=SOTAMAS90; UID=griffin; PWD=RPA4AAG; Directory=\\md-sage\Sage\Sage 100 Advanced\MAS90; ...; SERVER=NotTheServer""";
             Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(s));
             var builder = Host.CreateApplicationBuilder(args);
-           // builder.Services.AddWindowsService();
+            builder.Services.AddWindowsService(opt =>
+            {
+                opt.ServiceName = "Griffin Data Sync Service";
+            });
 
             builder.Services.Configure<SyncOptions>(
             builder.Configuration.GetSection("Sync"));
