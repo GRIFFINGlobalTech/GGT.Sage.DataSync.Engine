@@ -44,6 +44,7 @@ namespace Griffin.DataSync.Service
             sp,
             definition));
 }
+            builder.Services.AddScoped<ISyncJob, UpdateShipperBoardJob>();
             builder.Services.AddSingleton<ISqlQueryProvider, SqlQueryProvider>();
             builder.Services.AddSingleton<IOdbcConnectionFactory,OdbcConnectionFactory>();
             builder.Services.AddSingleton<ISyncJob,InventoryReplenishmentSyncJob>();
