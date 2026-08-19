@@ -41,12 +41,28 @@ public class SageConnectorRunner
     {
         using var process = new Process();
 
-        process.StartInfo.FileName =
-            _configuration["SageConnector:Path"]!;
+        var connectorPath =
+     _configuration["SageConnector:Path"];
 
-        process.StartInfo.Arguments =
-            command;
+        if (string.IsNullOrWhiteSpace(connectorPath))
+        {
+            throw new InvalidOperationException(
+                "SageConnector:Path is not configured.");
+        }
 
+        if (!File.Exists(connectorPath))
+        {
+            throw new FileNotFoundException(
+                $"Sage connector executable was not found: {connectorPath}",
+                connectorPath);
+        }
+
+        process.StartInfo.FileName = connectorPath;
+
+        process.StartInfo.WorkingDirectory =
+            Path.GetDirectoryName(connectorPath)!;
+
+        process.StartInfo.Arguments = command;
         process.StartInfo.UseShellExecute = false;
         process.StartInfo.RedirectStandardOutput = true;
         process.StartInfo.RedirectStandardError = true;
