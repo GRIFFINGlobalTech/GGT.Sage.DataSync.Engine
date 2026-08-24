@@ -253,7 +253,7 @@ public class SqlRepo : ISqlRepo
 
         using var command =
             new SqlCommand(
-                $"TRUNCATE FROM {tableName}",
+                $"TRUNCATE TABLE {tableName}",
                 connection)
             {
                 CommandTimeout = 0
