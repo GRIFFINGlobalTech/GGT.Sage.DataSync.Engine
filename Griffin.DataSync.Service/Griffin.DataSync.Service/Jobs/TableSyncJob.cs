@@ -17,11 +17,7 @@ public class TableSyncJob : ISyncJob
         TimeSpan.FromMinutes(
             _definition.IntervalMinutes);
 
-    public TableSyncJob(
-        SageConnectorRunner connector,
-        ISqlRepo sqlRepo,
-        TableSyncDefinition definition,
-        ILogger<TableSyncJob> logger)
+    public TableSyncJob(SageConnectorRunner connector, ISqlRepo sqlRepo, TableSyncDefinition definition, ILogger<TableSyncJob> logger)
     {
         _connector = connector;
         _sqlRepo = sqlRepo;
@@ -54,7 +50,25 @@ public class TableSyncJob : ISyncJob
 
             return;
         }
-       
+
+
+        // ========================================================
+        // CLEAR STAGE TABLE
+        // ========================================================
+
+        _logger.LogInformation(
+            "Clearing stage table {StageTable} for {Job}.",
+            _definition.StageTable,
+            JobName);
+
+        await _sqlRepo.ClearTableAsync(
+            _definition.StageTable,
+            cancellationToken);
+
+        _logger.LogInformation(
+            "Stage table {StageTable} cleared.",
+            _definition.StageTable);
+
         // ========================================================
         // BULK INSERT
         // ========================================================

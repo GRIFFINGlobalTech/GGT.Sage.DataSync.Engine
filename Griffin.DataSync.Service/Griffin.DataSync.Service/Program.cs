@@ -14,8 +14,7 @@ namespace Griffin.DataSync.Service
     {
         public static void Main(string[] args)
         {
-            var s = @"Provider=MSDASQL;Password=RPA4AAG;Persist Security Info=True;User ID=griffin;Extended Properties=""DSN=SOTAMAS90; UID=griffin; PWD=RPA4AAG; Directory=\\md-sage\Sage\Sage 100 Advanced\MAS90; ...; SERVER=NotTheServer""";
-            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(s));
+
             var builder = Host.CreateApplicationBuilder(args);
             builder.Services.AddWindowsService(opt =>
             {
@@ -35,18 +34,18 @@ namespace Griffin.DataSync.Service
                 .CreateLogger();
             builder.Services.AddSerilog();
             var tableDefinitions =
-    builder.Configuration
-        .GetSection("Sync:Tables")
-        .Get<List<TableSyncDefinition>>()
-        ?? new List<TableSyncDefinition>();
-
-          foreach (var definition in tableDefinitions)
-{
-    builder.Services.AddSingleton<ISyncJob>(sp =>
-        ActivatorUtilities.CreateInstance<TableSyncJob>(
-            sp,
-            definition));
-}
+                builder.Configuration
+                    .GetSection("Sync:Tables")
+                    .Get<List<TableSyncDefinition>>()
+                    ?? new List<TableSyncDefinition>();
+            
+                      foreach (var definition in tableDefinitions)
+            {
+                builder.Services.AddSingleton<ISyncJob>(sp =>
+                    ActivatorUtilities.CreateInstance<TableSyncJob>(
+                        sp,
+                        definition));
+            }
             builder.Services.AddSingleton<ISyncJob, UpdateShipperBoardJob>();
             builder.Services.AddSingleton<ISqlQueryProvider, SqlQueryProvider>();
             builder.Services.AddSingleton<IOdbcConnectionFactory,OdbcConnectionFactory>();

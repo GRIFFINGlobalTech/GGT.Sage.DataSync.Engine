@@ -20,10 +20,7 @@ public class SqlRepo : ISqlRepo
     // BULK INSERT DATATABLE
     // ============================================================
 
-    public async Task BulkInsertAsync(
-        DataTable table,
-        string destinationTable,
-        CancellationToken cancellationToken)
+    public async Task BulkInsertAsync(DataTable table, string destinationTable, CancellationToken cancellationToken)
     {
         if (table == null)
             throw new ArgumentNullException(nameof(table));
@@ -144,10 +141,7 @@ public class SqlRepo : ISqlRepo
     // GET DESTINATION TABLE COLUMNS
     // ============================================================
 
-    private static async Task<List<string>> GetDestinationColumnsAsync(
-        SqlConnection connection,
-        string destinationTable,
-        CancellationToken cancellationToken)
+    private static async Task<List<string>> GetDestinationColumnsAsync(SqlConnection connection, string destinationTable,CancellationToken cancellationToken)
     {
         var result = new List<string>();
 
@@ -181,10 +175,7 @@ public class SqlRepo : ISqlRepo
     // BULK INSERT DBDATAREADER
     // ============================================================
 
-    public async Task BulkInsertAsync(
-        DbDataReader reader,
-        string destinationTable,
-        CancellationToken cancellationToken)
+    public async Task BulkInsertAsync(DbDataReader reader, string destinationTable, CancellationToken cancellationToken)
     {
         if (reader == null)
             throw new ArgumentNullException(nameof(reader));
@@ -227,9 +218,7 @@ public class SqlRepo : ISqlRepo
     // EXECUTE STORED PROCEDURE
     // ============================================================
 
-    public async Task ExecuteProcedureAsync(
-        string procedure,
-        CancellationToken cancellationToken)
+    public async Task ExecuteProcedureAsync(string procedure, CancellationToken cancellationToken)
     {
         await using var connection =
             await _connectionFactory.CreateConnectionAsync();
@@ -245,6 +234,28 @@ public class SqlRepo : ISqlRepo
                 connection)
             {
                 CommandType = CommandType.StoredProcedure,
+                CommandTimeout = 0
+            };
+
+        await command.ExecuteNonQueryAsync(
+            cancellationToken);
+    }
+
+    public async Task ClearTableAsync(string tableName, CancellationToken cancellationToken)
+    {
+        await using var connection =
+            await _connectionFactory.CreateConnectionAsync();
+
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        using var command =
+            new SqlCommand(
+                $"TRUNCATE FROM {tableName}",
+                connection)
+            {
                 CommandTimeout = 0
             };
 
