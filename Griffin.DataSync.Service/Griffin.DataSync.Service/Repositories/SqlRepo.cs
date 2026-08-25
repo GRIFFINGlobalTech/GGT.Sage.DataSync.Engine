@@ -262,4 +262,68 @@ public class SqlRepo : ISqlRepo
         await command.ExecuteNonQueryAsync(
             cancellationToken);
     }
+    public async Task LogJobExecutionAsync(string jobName,DateTime startTime, DateTime endTime, long durationMs, string status, string? errorMessage,CancellationToken cancellationToken)
+    {
+        await using var connection =
+            await _connectionFactory.CreateConnectionAsync();
+
+        if (connection.State != ConnectionState.Open)
+        {
+            await connection.OpenAsync(cancellationToken);
+        }
+
+        const string sql = """
+        INSERT INTO dbo.SyncJobExecutionLog
+        (
+            JobName,
+            StartTime,
+            EndTime,
+            DurationMs,
+            Status,
+            ErrorMessage
+        )
+        VALUES
+        (
+            @JobName,
+            @StartTime,
+            @EndTime,
+            @DurationMs,
+            @Status,
+            @ErrorMessage
+        );
+        """;
+
+        using var command =
+            new SqlCommand(sql, connection)
+            {
+                CommandTimeout = 0
+            };
+
+        command.Parameters.AddWithValue(
+            "@JobName",
+            jobName);
+
+        command.Parameters.AddWithValue(
+            "@StartTime",
+            startTime);
+
+        command.Parameters.AddWithValue(
+            "@EndTime",
+            endTime);
+
+        command.Parameters.AddWithValue(
+            "@DurationMs",
+            durationMs);
+
+        command.Parameters.AddWithValue(
+            "@Status",
+            status);
+
+        command.Parameters.AddWithValue(
+            "@ErrorMessage",
+            (object?)errorMessage ?? DBNull.Value);
+
+        await command.ExecuteNonQueryAsync(
+            cancellationToken);
+    }
 }

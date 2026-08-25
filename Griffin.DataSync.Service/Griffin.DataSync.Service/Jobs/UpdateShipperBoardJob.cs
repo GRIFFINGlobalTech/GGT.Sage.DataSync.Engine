@@ -1,6 +1,6 @@
 ﻿using Griffin.DataSync.Service.Interfaces;
 
-namespace Griffin.DataSync.Service.Jobs;
+namespace Griffin.DataSync.Service.Services;
 
 public class UpdateShipperBoardJob : ISyncJob
 {
@@ -9,7 +9,8 @@ public class UpdateShipperBoardJob : ISyncJob
 
     public string JobName => "Refresh Shippers Board";
 
-    public TimeSpan Interval => TimeSpan.FromMinutes(5);
+    public TimeSpan Interval =>
+        TimeSpan.FromMinutes(5);
 
     public UpdateShipperBoardJob(
         ISqlRepo sqlRepo,
@@ -22,25 +23,72 @@ public class UpdateShipperBoardJob : ISyncJob
     public async Task ExecuteAsync(
         CancellationToken cancellationToken)
     {
-        const string procedure =
-            "dbo.usp_RefreshGriffinShippersBoard";   
+        var startTime = DateTime.Now;
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        _logger.LogInformation(
+            "Starting {Job} at {StartTime}",
+            JobName,
+            startTime);
 
         try
         {
             await _sqlRepo.ExecuteProcedureAsync(
-                procedure,
+                "dbo.usp_RefreshGriffinShippersBoard",
                 cancellationToken);
 
+            stopwatch.Stop();
+
+            var endTime = DateTime.Now;
+            var durationMs = stopwatch.ElapsedMilliseconds;
+
             _logger.LogInformation(
-                "{Job} completed successfully.",
-                JobName);
+                "{Job} completed at {EndTime}. Duration: {DurationMs} ms ({DurationSeconds:F2} seconds)",
+                JobName,
+                endTime,
+                durationMs,
+                stopwatch.Elapsed.TotalSeconds);
+
+            await _sqlRepo.LogJobExecutionAsync(
+                JobName,
+                startTime,
+                endTime,
+                durationMs,
+                "SUCCESS",
+                null,
+                cancellationToken);
         }
         catch (Exception ex)
         {
+            stopwatch.Stop();
+
+            var endTime = DateTime.Now;
+            var durationMs = stopwatch.ElapsedMilliseconds;
+
             _logger.LogError(
                 ex,
-                "{Job} failed.",
-                JobName);
+                "{Job} failed after {DurationMs} ms",
+                JobName,
+                durationMs);
+
+            try
+            {
+                await _sqlRepo.LogJobExecutionAsync(
+                    JobName,
+                    startTime,
+                    endTime,
+                    durationMs,
+                    "FAILED",
+                    ex.Message,
+                    cancellationToken);
+            }
+            catch (Exception logEx)
+            {
+                _logger.LogError(
+                    logEx,
+                    "Failed to write execution history for {Job}",
+                    JobName);
+            }
 
             throw;
         }
