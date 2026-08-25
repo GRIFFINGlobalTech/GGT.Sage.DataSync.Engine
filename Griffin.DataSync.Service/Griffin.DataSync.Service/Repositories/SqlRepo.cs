@@ -273,7 +273,7 @@ public class SqlRepo : ISqlRepo
         }
 
         const string sql = """
-        INSERT INTO dbo.SyncJobExecutionLog
+        INSERT INTO dbo.GriffinRPASyncJobExecutionLog
         (
             JobName,
             StartTime,
