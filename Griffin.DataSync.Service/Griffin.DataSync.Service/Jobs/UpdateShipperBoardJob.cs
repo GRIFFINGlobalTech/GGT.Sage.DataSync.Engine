@@ -49,14 +49,14 @@ public class UpdateShipperBoardJob : ISyncJob
                 durationMs,
                 stopwatch.Elapsed.TotalSeconds);
 
-            await _sqlRepo.LogJobExecutionAsync(
-                JobName,
-                startTime,
-                endTime,
-                durationMs,
-                "SUCCESS",
-                null,
-                cancellationToken);
+            //await _sqlRepo.LogJobExecutionAsync(
+            //    JobName,
+            //    startTime,
+            //    endTime,
+            //    durationMs,
+            //    "SUCCESS",
+            //    null,
+            //    cancellationToken);
         }
         catch (Exception ex)
         {
