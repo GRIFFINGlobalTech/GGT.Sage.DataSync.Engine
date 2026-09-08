@@ -16,10 +16,8 @@ try
 
     var command =
         args[0].ToLowerInvariant();
-
-    var factory =
-        new OdbcConnectionFactory(
-            "DSN=SOTAMAS90;UID=griffin;PWD=RPA4AAG;");
+var ConnectionString = "Driver={MAS 90 4.0 ODBC Driver};UID=griffin;PWD=RPA4AAG;Company=AAG;Directory=\\\\md-sage\\Sage\\Sage 100 Advanced\\MAS90;Prefix=\\\\md-sage\\Sage\\Sage 100 Advanced\\MAS90\\SY\\, \\\\md-sage\\Sage\\Sage 100 Advanced\\MAS90\\==\\;ViewDLL=\\\\md-sage\\Sage\\Sage 100 Advanced\\MAS90\\HOME;LogFile=\\PVXODBC.LOG;RemotePVKIOHost=MD-SAGE;RemotePVKIOPort=20222;CacheSize=4;DirtyReads=1;BurstMode=1;StripTrailingSpaces=1;SERVER=NotTheServer;";
+    var factory = new OdbcConnectionFactory(ConnectionString);
 
     var repository =
         new SageRepository(factory);
