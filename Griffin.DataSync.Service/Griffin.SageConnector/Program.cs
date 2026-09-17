@@ -66,6 +66,8 @@ var ConnectionString = "Driver={MAS 90 4.0 ODBC Driver};UID=griffin;PWD=RPA4AAG;
 
                     "so_salesorderdetail" =>
                         "SO_SalesOrderDetail",
+                     "po_purchaseorderdetail" =>
+                        "PO_PurchaseOrderDetail",
 
                     _ =>
                         throw new Exception(
