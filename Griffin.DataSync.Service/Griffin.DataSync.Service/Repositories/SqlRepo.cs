@@ -1,8 +1,9 @@
-﻿using System.Data;
-using System.Data.Common;
-using Microsoft.Data.SqlClient;
+﻿using Griffin.DataSync.Service.Infrastructure.ConnectionFactories;
 using Griffin.DataSync.Service.Interfaces;
-using Griffin.DataSync.Service.Infrastructure.ConnectionFactories;
+using Griffin.DataSync.Service.Models;
+using Microsoft.Data.SqlClient;
+using System.Data;
+using System.Data.Common;
 
 namespace Griffin.DataSync.Service.Repositories;
 
@@ -322,6 +323,153 @@ public class SqlRepo : ISqlRepo
         command.Parameters.AddWithValue(
             "@ErrorMessage",
             (object?)errorMessage ?? DBNull.Value);
+
+        await command.ExecuteNonQueryAsync(
+            cancellationToken);
+    }
+
+    public async Task<List<EmailQueueItem>> GetPendingEmailsAsync(
+    CancellationToken cancellationToken)
+    {
+        var emails = new List<EmailQueueItem>();
+
+        await using var connection = await _connectionFactory.CreateConnectionAsync();
+
+        await using var command = connection.CreateCommand();
+
+        command.CommandText =
+            "dbo.usp_GetPendingEmails";
+
+        command.CommandType =
+            System.Data.CommandType.StoredProcedure;
+
+        await using var reader =
+            await command.ExecuteReaderAsync(
+                cancellationToken);
+
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            emails.Add(
+                new EmailQueueItem
+                {
+                    ID = reader.GetInt64(
+                        reader.GetOrdinal("ID")),
+
+                    EmailType = reader["EmailType"]
+                        ?.ToString() ?? string.Empty,
+
+                    ReferenceID =
+                        reader["ReferenceID"] == DBNull.Value
+                            ? null
+                            : Convert.ToInt64(
+                                reader["ReferenceID"]),
+
+                    ReferenceNo =
+                        reader["ReferenceNo"] == DBNull.Value
+                            ? null
+                            : reader["ReferenceNo"]
+                                .ToString(),
+
+                    Recipients =
+                        reader["Recipients"]
+                            ?.ToString() ?? string.Empty,
+
+                    Subject =
+                        reader["Subject"]
+                            ?.ToString() ?? string.Empty,
+
+                    Body =
+                        reader["Body"]
+                            ?.ToString() ?? string.Empty,
+
+                    Status =
+                        reader["Status"]
+                            ?.ToString() ?? string.Empty,
+
+                    Attempts =
+                        reader["Attempts"] == DBNull.Value
+                            ? 0
+                            : Convert.ToInt32(
+                                reader["Attempts"])
+                });
+        }
+
+        return emails;
+    }
+
+
+    public async Task MarkEmailSentAsync(
+        long emailId,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.CreateConnectionAsync();
+
+
+        await using var command = connection.CreateCommand();
+
+        command.CommandText =
+            "dbo.usp_MarkEmailSent";
+
+        command.CommandType =
+            System.Data.CommandType.StoredProcedure;
+
+        var parameter =
+            command.CreateParameter();
+
+        parameter.ParameterName =
+            "@EmailID";
+
+        parameter.Value =
+            emailId;
+
+        command.Parameters.Add(parameter);
+
+        await command.ExecuteNonQueryAsync(
+            cancellationToken);
+    }
+
+
+    public async Task MarkEmailFailedAsync(
+        long emailId,
+        string errorMessage,
+        CancellationToken cancellationToken)
+    {
+        await using var connection = await _connectionFactory.CreateConnectionAsync();
+
+
+        await using var command = connection.CreateCommand();
+
+        command.CommandText =
+            "dbo.usp_MarkEmailFailed";
+
+        command.CommandType =
+            System.Data.CommandType.StoredProcedure;
+
+        var emailParameter =
+            command.CreateParameter();
+
+        emailParameter.ParameterName =
+            "@EmailID";
+
+        emailParameter.Value =
+            emailId;
+
+        command.Parameters.Add(emailParameter);
+
+        var errorParameter =
+            command.CreateParameter();
+
+        errorParameter.ParameterName =
+            "@ErrorMessage";
+
+        errorParameter.Value =
+            string.IsNullOrWhiteSpace(errorMessage)
+                ? DBNull.Value
+                : errorMessage.Length > 2000
+                    ? errorMessage[..2000]
+                    : errorMessage;
+
+        command.Parameters.Add(errorParameter);
 
         await command.ExecuteNonQueryAsync(
             cancellationToken);

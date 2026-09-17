@@ -4,7 +4,8 @@ using System.Text;
 
 namespace Griffin.DataSync.Service.Interfaces
 {
-    internal interface IEmailService
+    public interface IEmailService
     {
+        Task SendAsync(string recipients, string subject, string body, CancellationToken cancellationToken = default);
     }
 }
