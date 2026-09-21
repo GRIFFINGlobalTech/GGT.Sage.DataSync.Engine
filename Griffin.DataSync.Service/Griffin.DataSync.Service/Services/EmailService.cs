@@ -1,105 +1,203 @@
-﻿using Griffin.DataSync.Service.Interfaces;
+﻿using System.Net.Http.Headers;
+using System.Text;
+using System.Text.Json;
+using Griffin.DataSync.Service.Interfaces;
 using Griffin.DataSync.Service.Models;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
-using System.Net;
-using System.Net.Mail;
-using System.Text;
+using Microsoft.Identity.Client;
 
-namespace Griffin.DataSync.Service.Services
+namespace Griffin.DataSync.Service.Services;
+
+public class EmailService : IEmailService
 {
-    public class EmailService : IEmailService
-    {
-        private readonly EmailOptions _options;
-        private readonly ILogger<EmailService> _logger;
+    private readonly EmailOptions _options;
+    private readonly ILogger<EmailService> _logger;
+    private readonly HttpClient _httpClient;
 
-        public EmailService(
-            IOptions<EmailOptions> options,
-            ILogger<EmailService> logger)
+    private IConfidentialClientApplication? _msalClient;
+
+    public EmailService(
+        IOptions<EmailOptions> options,
+        ILogger<EmailService> logger,
+        IHttpClientFactory httpClientFactory)
+    {
+        _options = options.Value;
+        _logger = logger;
+        _httpClient = httpClientFactory.CreateClient("MicrosoftGraph");
+    }
+
+    public async Task SendAsync(
+        string recipients,
+        string subject,
+        string body,
+        CancellationToken cancellationToken = default)
+    {
+        ValidateConfiguration();
+
+        if (string.IsNullOrWhiteSpace(recipients))
         {
-            _options = options.Value;
-            _logger = logger;
+            throw new ArgumentException(
+                "No email recipients were provided.",
+                nameof(recipients));
         }
 
-        public async Task SendAsync( string recipients, string subject, string body, CancellationToken cancellationToken = default)
+        if (string.IsNullOrWhiteSpace(subject))
         {
-            if (string.IsNullOrWhiteSpace(recipients))
+            throw new ArgumentException(
+                "Email subject cannot be empty.",
+                nameof(subject));
+        }
+
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            throw new ArgumentException(
+                "Email body cannot be empty.",
+                nameof(body));
+        }
+
+        var recipientList = ParseRecipients(recipients);
+
+        if (recipientList.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "No valid email recipients were found.");
+        }
+
+        _logger.LogInformation(
+            "Sending email through Microsoft Graph. From: {Sender}, Recipients: {RecipientCount}, Subject: {Subject}",
+            _options.SenderEmail,
+            recipientList.Count,
+            subject);
+
+        var accessToken = await GetAccessTokenAsync(cancellationToken);
+
+        var graphRequest = new
+        {
+            message = new
             {
-                throw new ArgumentException(
-                    "Email recipients cannot be empty.",
-                    nameof(recipients));
-            }
+                subject = subject,
 
-            if (string.IsNullOrWhiteSpace(_options.SmtpServer))
+                body = new
+                {
+                    contentType = "HTML",
+                    content = body
+                },
+
+                toRecipients = recipientList
+                    .Select(email => new
+                    {
+                        emailAddress = new
+                        {
+                            address = email
+                        }
+                    })
+                    .ToArray()
+            },
+
+            saveToSentItems = true
+        };
+
+        var json = JsonSerializer.Serialize(
+            graphRequest,
+            new JsonSerializerOptions
             {
-                throw new InvalidOperationException(
-                    "SMTP server is not configured.");
-            }
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            });
 
-            if (string.IsNullOrWhiteSpace(_options.FromEmail))
-            {
-                throw new InvalidOperationException(
-                    "Email FromEmail is not configured.");
-            }
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"users/{Uri.EscapeDataString(_options.SenderEmail)}/sendMail");
 
-            cancellationToken.ThrowIfCancellationRequested();
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue(
+                "Bearer",
+                accessToken);
 
-            using var message = new MailMessage();
+        request.Content = new StringContent(
+            json,
+            Encoding.UTF8,
+            "application/json");
 
-            message.From = new MailAddress(
-                _options.FromEmail,
-                string.IsNullOrWhiteSpace(_options.FromName)
-                    ? _options.FromEmail
-                    : _options.FromName);
+        using var response = await _httpClient.SendAsync(
+            request,
+            cancellationToken);
 
-            foreach (var recipient in recipients
-                         .Split(
-                             new[] { ';', ',' },
-                             StringSplitOptions.RemoveEmptyEntries |
-                             StringSplitOptions.TrimEntries))
-            {
-                message.To.Add(recipient);
-            }
+        var responseBody = await response.Content.ReadAsStringAsync(
+            cancellationToken);
 
-            message.Subject = subject;
+        if (!response.IsSuccessStatusCode)
+        {
+            _logger.LogError(
+                "Microsoft Graph email failed. Status: {StatusCode}. Response: {Response}",
+                (int)response.StatusCode,
+                responseBody);
 
-            message.Body = body;
+            throw new InvalidOperationException(
+                $"Microsoft Graph email failed with HTTP {(int)response.StatusCode} ({response.StatusCode}). " +
+                $"Response: {responseBody}");
+        }
 
-            message.IsBodyHtml = body.Contains("<html",
-                StringComparison.OrdinalIgnoreCase);
+        _logger.LogInformation(
+            "Email successfully accepted by Microsoft Graph. Subject: {Subject}, Recipients: {RecipientCount}",
+            subject,
+            recipientList.Count);
+    }
 
-            using var smtp = new SmtpClient(
-                _options.SmtpServer,
-                _options.SmtpPort);
+    private async Task<string> GetAccessTokenAsync(
+        CancellationToken cancellationToken)
+    {
+        _msalClient ??= ConfidentialClientApplicationBuilder
+            .Create(_options.ClientId)
+            .WithClientSecret(_options.ClientSecret)
+            .WithAuthority(
+                $"https://login.microsoftonline.com/{_options.TenantId}")
+            .Build();
 
-            smtp.EnableSsl = _options.EnableSsl;
+        var result = await _msalClient
+            .AcquireTokenForClient(
+                new[]
+                {
+                    "https://graph.microsoft.com/.default"
+                })
+            .ExecuteAsync(cancellationToken);
 
-            smtp.Timeout =
-                _options.TimeoutSeconds * 1000;
+        return result.AccessToken;
+    }
 
-            if (!string.IsNullOrWhiteSpace(_options.Username))
-            {
-                smtp.Credentials =
-                    new NetworkCredential(
-                        _options.Username,
-                        _options.Password);
-            }
-            else
-            {
-                smtp.UseDefaultCredentials = true;
-            }
+    private static List<string> ParseRecipients(
+        string recipients)
+    {
+        return recipients
+            .Split(
+                new[] { ';', ',', '\r', '\n' },
+                StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => x.Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
 
-            _logger.LogInformation(
-                "Sending email. Subject: {Subject}, Recipients: {Recipients}",
-                subject,
-                recipients);
+    private void ValidateConfiguration()
+    {
+        var missing = new List<string>();
 
-            await smtp.SendMailAsync(message);
+        if (string.IsNullOrWhiteSpace(_options.TenantId))
+            missing.Add("Email:TenantId");
 
-            _logger.LogInformation(
-                "Email sent successfully. Subject: {Subject}",
-                subject);
+        if (string.IsNullOrWhiteSpace(_options.ClientId))
+            missing.Add("Email:ClientId");
+
+        if (string.IsNullOrWhiteSpace(_options.ClientSecret))
+            missing.Add("Email:ClientSecret");
+
+        if (string.IsNullOrWhiteSpace(_options.SenderEmail))
+            missing.Add("Email:SenderEmail");
+
+        if (missing.Count > 0)
+        {
+            throw new InvalidOperationException(
+                "Microsoft Graph email configuration is incomplete. Missing: " +
+                string.Join(", ", missing));
         }
     }
 }

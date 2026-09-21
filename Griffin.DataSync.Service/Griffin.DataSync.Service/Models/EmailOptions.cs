@@ -6,19 +6,15 @@ namespace Griffin.DataSync.Service.Models
 {
     public class EmailOptions
     {
-        public string SmtpServer { get; set; } = string.Empty;
+        public string TenantId { get; set; } = string.Empty;
 
-        public int SmtpPort { get; set; } = 25;
+        public string ClientId { get; set; } = string.Empty;
 
-        public bool EnableSsl { get; set; }
+        public string ClientSecret { get; set; } = string.Empty;
 
-        public string Username { get; set; } = string.Empty;
+        public string SenderEmail { get; set; } = string.Empty;
 
-        public string Password { get; set; } = string.Empty;
-
-        public string FromEmail { get; set; } = string.Empty;
-
-        public string FromName { get; set; } = string.Empty;
+        public string SenderName { get; set; } = "A&A Global Warehouse Alerts";
 
         public int TimeoutSeconds { get; set; } = 30;
     }

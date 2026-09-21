@@ -20,7 +20,18 @@ namespace Griffin.DataSync.Service
             {
                 opt.ServiceName = "Griffin Data Sync Service";
             });
-
+            builder.Services.AddHttpClient(
+            "MicrosoftGraph",
+            client =>
+            {
+                client.BaseAddress = new Uri(
+                    "https://graph.microsoft.com/v1.0/");
+            
+                client.Timeout = TimeSpan.FromSeconds(
+                    builder.Configuration
+                        .GetSection("Email")
+                        .GetValue<int>("TimeoutSeconds", 30));
+            });
             builder.Services.Configure<SyncOptions>(
             builder.Configuration.GetSection("Sync"));
             builder.Services.Configure<JobScheduleOptions>(
