@@ -32,7 +32,6 @@ public class EmailService : IEmailService
         string body,
         CancellationToken cancellationToken = default)
     {
-        ValidateConfiguration();
 
         if (string.IsNullOrWhiteSpace(recipients))
         {
@@ -62,7 +61,6 @@ public class EmailService : IEmailService
             throw new InvalidOperationException(
                 "No valid email recipients were found.");
         }
-
         _logger.LogInformation(
             "Sending email through Microsoft Graph. From: {Sender}, Recipients: {RecipientCount}, Subject: {Subject}",
             _options.SenderEmail,
@@ -177,27 +175,5 @@ public class EmailService : IEmailService
             .ToList();
     }
 
-    private void ValidateConfiguration()
-    {
-        var missing = new List<string>();
-
-        if (string.IsNullOrWhiteSpace(_options.TenantId))
-            missing.Add("Email:TenantId");
-
-        if (string.IsNullOrWhiteSpace(_options.ClientId))
-            missing.Add("Email:ClientId");
-
-        if (string.IsNullOrWhiteSpace(_options.ClientSecret))
-            missing.Add("Email:ClientSecret");
-
-        if (string.IsNullOrWhiteSpace(_options.SenderEmail))
-            missing.Add("Email:SenderEmail");
-
-        if (missing.Count > 0)
-        {
-            throw new InvalidOperationException(
-                "Microsoft Graph email configuration is incomplete. Missing: " +
-                string.Join(", ", missing));
-        }
-    }
+   
 }
