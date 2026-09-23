@@ -52,6 +52,8 @@ var ConnectionString = "Driver={MAS 90 4.0 ODBC Driver};UID=griffin;PWD=RPA4AAG;
             string tableName =
                 command switch
                 {
+                    "so_salesorderdetail" =>
+                        "SO_SalesOrderDetail",
                     "ci_item" =>
                         "CI_ITEM",
 
@@ -62,10 +64,7 @@ var ConnectionString = "Driver={MAS 90 4.0 ODBC Driver};UID=griffin;PWD=RPA4AAG;
                         "MB_BinLocation",
 
                     "so_salesorderheader" =>
-                        "SO_SalesOrderHeader",
-
-                    "so_salesorderdetail" =>
-                        "SO_SalesOrderDetail",
+                        "SO_SalesOrderHeader",                  
                      "po_purchaseorderdetail" =>
                         "PO_PurchaseOrderDetail",
 
