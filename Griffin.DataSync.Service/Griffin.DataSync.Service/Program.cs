@@ -58,8 +58,8 @@ namespace Griffin.DataSync.Service
                         definition));
             }
             builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
-            builder.Services.AddSingleton<IEmailService, EmailService>();
-            builder.Services.AddSingleton<ISyncJob, PickExceptionDetectionJob>();
+            //builder.Services.AddSingleton<IEmailService, EmailService>();
+            //builder.Services.AddSingleton<ISyncJob, PickExceptionDetectionJob>();
             builder.Services.AddSingleton<ISyncJob, SendEmailAlertsJob>();
             builder.Services.AddSingleton<ISyncJob, UpdateShipperBoardJob>();
             builder.Services.AddSingleton<ISqlQueryProvider, SqlQueryProvider>();
