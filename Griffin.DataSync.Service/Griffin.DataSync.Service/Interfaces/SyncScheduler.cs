@@ -115,7 +115,7 @@ public class SyncScheduler
             RunPipelineAsync(
                 "Sage",
                 sageJobs,
-                TimeSpan.FromSeconds(30),
+                TimeSpan.FromSeconds(3),
                 cancellationToken);
 
         var pickExceptionPipelineTask =
