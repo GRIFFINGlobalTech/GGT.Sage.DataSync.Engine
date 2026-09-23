@@ -10,12 +10,9 @@ public class TableSyncJob : ISyncJob
     private readonly TableSyncDefinition _definition;
     private readonly ILogger _logger;
 
-    public string JobName =>
-        _definition.JobName;
+    public string JobName => _definition.JobName;
 
-    public TimeSpan Interval =>
-        TimeSpan.FromMinutes(
-            _definition.IntervalMinutes);
+    public SyncPipeline Pipeline =>   SyncPipeline.Sage;
 
     public TableSyncJob(SageConnectorRunner connector, ISqlRepo sqlRepo, TableSyncDefinition definition, ILogger<TableSyncJob> logger)
     {

@@ -1,4 +1,5 @@
 ﻿using Griffin.DataSync.Service.Interfaces;
+using Griffin.DataSync.Service.Models;
 
 namespace Griffin.DataSync.Service.Services;
 
@@ -8,6 +9,7 @@ public class UpdateShipperBoardJob : ISyncJob
     private readonly ILogger<UpdateShipperBoardJob> _logger;
 
     public string JobName => "Refresh Shippers Board";
+    public SyncPipeline Pipeline => SyncPipeline.Sage;
 
     public TimeSpan Interval =>
         TimeSpan.FromMinutes(5);

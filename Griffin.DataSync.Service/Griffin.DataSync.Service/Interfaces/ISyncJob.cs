@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Griffin.DataSync.Service.Models;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -9,8 +10,10 @@ namespace Griffin.DataSync.Service.Interfaces
     public interface ISyncJob
     {
         string JobName { get; }
-        TimeSpan Interval { get; }
 
-        Task ExecuteAsync(CancellationToken cancellationToken);
+        SyncPipeline Pipeline { get; }
+
+        Task ExecuteAsync(
+            CancellationToken cancellationToken);
     }
 }

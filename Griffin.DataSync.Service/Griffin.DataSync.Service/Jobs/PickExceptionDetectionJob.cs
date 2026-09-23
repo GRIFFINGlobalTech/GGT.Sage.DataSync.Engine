@@ -1,4 +1,5 @@
 ﻿using Griffin.DataSync.Service.Interfaces;
+using Griffin.DataSync.Service.Models;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -12,6 +13,8 @@ namespace Griffin.DataSync.Service.Jobs
 
         public string JobName =>
             "Detect Pick Exceptions";
+        public SyncPipeline Pipeline =>
+            SyncPipeline.PickExceptions;
 
         public TimeSpan Interval =>
             TimeSpan.FromMinutes(1);
