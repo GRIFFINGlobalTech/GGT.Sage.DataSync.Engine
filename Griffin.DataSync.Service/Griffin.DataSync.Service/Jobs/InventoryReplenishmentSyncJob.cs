@@ -1,6 +1,7 @@
-﻿using System.Data;
-using Griffin.DataSync.Service.Interfaces;
+﻿using Griffin.DataSync.Service.Interfaces;
+using Griffin.DataSync.Service.Models;
 using Griffin.DataSync.Service.Services;
+using System.Data;
 
 namespace Griffin.DataSync.Service.Jobs;
 
@@ -11,6 +12,8 @@ public class InventoryReplenishmentSyncJob : ISyncJob
     private readonly ILogger<InventoryReplenishmentSyncJob> _logger;
 
     public string JobName => "Inventory Replenishment";
+    public SyncPipeline Pipeline => SyncPipeline.Sage;
+
 
     public TimeSpan Interval =>
         TimeSpan.FromMinutes(5);
